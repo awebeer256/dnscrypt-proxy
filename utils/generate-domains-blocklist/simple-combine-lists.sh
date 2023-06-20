@@ -65,10 +65,23 @@ dirname() {
 	# print '/'.
 	say "${dir:-/}"
 }
+trim_string_front() {
+    # Usage: trim_string "   example   string"
+
+    # Remove all leading white-space.
+    # '${1%%[![:space:]]*}': Strip everything but leading white-space.
+    # '${1#${XXX}}': Remove the white-space from the start of the string.
+    trim=${1#${1%%[![:space:]]*}}
+    say "$trim"
+}
 
 THIS_NAME=$(basename "$0"); readonly THIS_NAME
+THIS_DIR=$(dirname "$0"); readonly THIS_DIR
 message() {
 	say "[$THIS_NAME] $1"
+}
+warn() {
+	message "WARNING: $1" >&2
 }
 fatal_exit() {
 	message "FATAL: $1" >&2
@@ -76,8 +89,7 @@ fatal_exit() {
 }
 
 if [ -z "$3" ]; then
-	message "Usage: $THIS_NAME <config_file> <output_block_file> \
-<output_allow_file>" >&2
+	message "Usage: $THIS_NAME <config_file> <output_block_file> <output_allow_file>" >&2
 	exit 2
 fi
 
@@ -91,6 +103,10 @@ can_write() {
 [ -r "$1" ] || fatal_exit "Couldn't read config file ($1)." 3
 can_write "$2" || fatal_exit "Couldn't write to output blocklist file ($2)." 3
 can_write "$3" || fatal_exit "Couldn't write to output allowlist file ($3)." 3
+
+# for cmd in mktemp; do
+# 	cmd_exists $cmd || fatal_exit "The command $cmd is not available." 4
+# done
 
 downloader=
 for cmd in curl wget; do
@@ -108,4 +124,46 @@ download() {
 		wget -O - "$1"
 	fi
 }
+
+process_line() {
+	protocol=${1%%:*}
+	if [ "$protocol" = "file" ]; then
+		fpath=${1#file:}
+		[ "${fpath%%/*}" = "$fpath" ] && fpath="$THIS_DIR/$fpath"
+		[ -r "$fpath" ] || fatal_exit "Couldn't read $2 file: $fpath" 3
+		cat "$fpath"
+	elif [ "$protocol" = "$1" ] || [ "${1#"$protocol"://}" = "$1" ]; then
+		fatal_exit "References to allow- and blocklists must be either of the form 'file:<filepath>' \
+or a URL including protocol." 5
+	else
+		download "$1" || fatal_exit "Failed to download $2 file: $1" 6
+	fi
+}
+
+section=0
+block_lines=
+allow_lines=
+while IFS='' read -r line || [ -n "$line" ]; do
+	line=$(trim_string_front "$line")
+	[ -z "${line%%#*}" ] && continue # skip comments
+	case $section in
+		0)
+			if [ "$line" = "[block]" ]; then
+				section=1
+			else
+				fatal_exit "Found a non-comment line before the [block] section of the config file: $line" 5
+			fi
+			;;
+		1)
+			if [ "$line" = "[allow]" ]; then
+				section=2
+				continue
+			fi
+			block_lines="$block_lines$(process_line "$line" "blocklist")"
+			;;
+		2)
+			allow_lines="$allow_lines$(process_line "$line" "allowlist")"
+			;;
+	esac
+done
 
