@@ -167,3 +167,8 @@ while IFS='' read -r line || [ -n "$line" ]; do
 	esac
 done
 
+cat "$block_lines" > "$2".new || fatal_exit "Failed to write blocklist: $2.new" 3
+cat "$allow_lines" > "$3".new || fatal_exit "Failed to write allowlist: $3.new" 3
+rm "$2" "$3"
+mv "$2".new "$2"
+mv "$3.new" "$3"
