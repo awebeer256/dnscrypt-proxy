@@ -9,61 +9,61 @@ say() {
 }
 # https://github.com/dylanaraps/pure-sh-bible
 basename() {
-    # Usage: basename "path" ["suffix"]
+	# Usage: basename "path" ["suffix"]
 
-    # Strip all trailing forward-slashes '/' from
-    # the end of the string.
-    #
-    # "${1##*[!/]}": Remove all non-forward-slashes
-    # from the start of the string, leaving us with only
-    # the trailing slashes.
-    # "${1%%"${}"}:  Remove the result of the above
-    # substitution (a string of forward slashes) from the
-    # end of the original string.
-    dir=${1%"${1##*[!/]}"}
+	# Strip all trailing forward-slashes '/' from
+	# the end of the string.
+	#
+	# "${1##*[!/]}": Remove all non-forward-slashes
+	# from the start of the string, leaving us with only
+	# the trailing slashes.
+	# "${1%%"${}"}:  Remove the result of the above
+	# substitution (a string of forward slashes) from the
+	# end of the original string.
+	dir=${1%"${1##*[!/]}"}
 
-    # Remove everything before the final forward-slash '/'.
-    dir=${dir##*/}
+	# Remove everything before the final forward-slash '/'.
+	dir=${dir##*/}
 
-    # If a suffix was passed to the function, remove it from
-    # the end of the resulting string.
-    dir=${dir%"$2"}
+	# If a suffix was passed to the function, remove it from
+	# the end of the resulting string.
+	dir=${dir%"$2"}
 
-    # Print the resulting string and if it is empty,
-    # print '/'.
-    say "${dir:-/}"
+	# Print the resulting string and if it is empty,
+	# print '/'.
+	say "${dir:-/}"
 }
 dirname() {
-    # Usage: dirname "path"
+	# Usage: dirname "path"
 
-    # If '$1' is empty set 'dir' to '.', else '$1'.
-    dir=${1:-.}
+	# If '$1' is empty set 'dir' to '.', else '$1'.
+	dir=${1:-.}
 
-    # Strip all trailing forward-slashes '/' from
-    # the end of the string.
-    #
-    # "${dir##*[!/]}": Remove all non-forward-slashes
-    # from the start of the string, leaving us with only
-    # the trailing slashes.
-    # "${dir%%"${}"}": Remove the result of the above
-    # substitution (a string of forward slashes) from the
-    # end of the original string.
-    dir=${dir%%"${dir##*[!/]}"}
+	# Strip all trailing forward-slashes '/' from
+	# the end of the string.
+	#
+	# "${dir##*[!/]}": Remove all non-forward-slashes
+	# from the start of the string, leaving us with only
+	# the trailing slashes.
+	# "${dir%%"${}"}": Remove the result of the above
+	# substitution (a string of forward slashes) from the
+	# end of the original string.
+	dir=${dir%%"${dir##*[!/]}"}
 
-    # If the variable *does not* contain any forward slashes
-    # set its value to '.'.
-    [ "${dir##*/*}" ] && dir=.
+	# If the variable *does not* contain any forward slashes
+	# set its value to '.'.
+	[ "${dir##*/*}" ] && dir=.
 
-    # Remove everything *after* the last forward-slash '/'.
-    dir=${dir%/*}
+	# Remove everything *after* the last forward-slash '/'.
+	dir=${dir%/*}
 
-    # Again, strip all trailing forward-slashes '/' from
-    # the end of the string (see above).
-    dir=${dir%%"${dir##*[!/]}"}
+	# Again, strip all trailing forward-slashes '/' from
+	# the end of the string (see above).
+	dir=${dir%%"${dir##*[!/]}"}
 
-    # Print the resulting string and if it is empty,
-    # print '/'.
-    say "${dir:-/}"
+	# Print the resulting string and if it is empty,
+	# print '/'.
+	say "${dir:-/}"
 }
 
 THIS_NAME=$(basename "$0"); readonly THIS_NAME
