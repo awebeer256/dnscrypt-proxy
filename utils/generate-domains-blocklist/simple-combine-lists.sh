@@ -92,3 +92,20 @@ can_write() {
 can_write "$2" || fatal_exit "Couldn't write to output blocklist file ($2)." 3
 can_write "$3" || fatal_exit "Couldn't write to output allowlist file ($3)." 3
 
+downloader=
+for cmd in curl wget; do
+	if cmd_exists $cmd; then
+		downloader=$cmd
+		break
+	fi
+done
+[ -n "$downloader" ] || fatal_exit "Neither curl nor wget is available." 4
+
+download() {
+	if [ $downloader = "curl" ]; then
+		curl -L "$1"
+	else
+		wget -O - "$1"
+	fi
+}
+
