@@ -75,6 +75,15 @@ trim_string_front() {
     say "$trim"
 }
 
+if [ "$1" = "debug" ]; then
+	shift
+	DEBUG=0
+elif [ "$4" = "debug" ]; then
+	DEBUG=0
+else
+	DEBUG=1
+fi
+
 THIS_NAME=$(basename "$0"); readonly THIS_NAME
 THIS_DIR=$(dirname "$0"); readonly THIS_DIR
 message() {
@@ -87,11 +96,16 @@ fatal_exit() {
 	message "FATAL: $1" >&2
 	exit "${2:-1}"
 }
+debug() {
+	[ $DEBUG -eq 0 ] || return
+	message "DEBUG: $1"
+}
 
 if [ -z "$3" ]; then
 	message "Usage: $THIS_NAME <config_file> <output_block_file> <output_allow_file>" >&2
 	exit 2
 fi
+debug "Called with: '$1', '$2', '$3'"
 
 can_write() {
 	[ -w "$1" ] && return 0
@@ -112,6 +126,7 @@ downloader=
 for cmd in curl wget; do
 	if cmd_exists $cmd; then
 		downloader=$cmd
+		debug "Using downloader $downloader"
 		break
 	fi
 done
@@ -119,7 +134,7 @@ done
 
 download() {
 	if [ $downloader = "curl" ]; then
-		curl -L "$1"
+		curl -L --progress-bar "$1"
 	else
 		wget -O - "$1"
 	fi
@@ -144,6 +159,7 @@ section=0
 block_lines=
 allow_lines=
 while IFS='' read -r line || [ -n "$line" ]; do
+	debug "Read line: '$line'"
 	line=$(trim_string_front "$line")
 	[ -z "${line%%#*}" ] && continue # skip comments
 	case $section in
@@ -165,10 +181,11 @@ while IFS='' read -r line || [ -n "$line" ]; do
 			allow_lines="$allow_lines$(process_line "$line" "allowlist")"
 			;;
 	esac
-done
+done < "$1"
 
-cat "$block_lines" > "$2".new || fatal_exit "Failed to write blocklist: $2.new" 3
-cat "$allow_lines" > "$3".new || fatal_exit "Failed to write allowlist: $3.new" 3
-rm "$2" "$3"
+debug "Writing lists to disk."
+say "$block_lines" > "$2".new || fatal_exit "Failed to write blocklist: $2.new" 3
+say "$allow_lines" > "$3".new || fatal_exit "Failed to write allowlist: $3.new" 3
+for f in "$2" "$3"; do [ -e "$f" ] && rm "$f"; done
 mv "$2".new "$2"
-mv "$3.new" "$3"
+mv "$3".new "$3"
