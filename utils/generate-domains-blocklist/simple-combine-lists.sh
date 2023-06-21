@@ -71,7 +71,7 @@ trim_string_front() {
     # Remove all leading white-space.
     # '${1%%[![:space:]]*}': Strip everything but leading white-space.
     # '${1#${XXX}}': Remove the white-space from the start of the string.
-    trim=${1#${1%%[![:space:]]*}}
+    trim=${1#"${1%%[![:space:]]*}"}
     say "$trim"
 }
 
@@ -109,8 +109,8 @@ debug "Called with: '$1', '$2', '$3'"
 
 can_write() {
 	[ -w "$1" ] && return 0
-	[ ! -e "$1" ] && [ -d "$(dirname "$1")" ] && [ -w "$(dirname "$1")" ] && \
-		[ -x "$(dirname "$1")" ] && return 0
+	dir=$(dirname "$1")
+	[ ! -e "$1" ] && [ -d "$dir" ] && [ -w "$dir" ] && [ -x "$dir" ] && return 0
 	return 1
 }
 
@@ -118,9 +118,9 @@ can_write() {
 can_write "$2" || fatal_exit "Couldn't write to output blocklist file ($2)." 3
 can_write "$3" || fatal_exit "Couldn't write to output allowlist file ($3)." 3
 
-# for cmd in mktemp; do
-# 	cmd_exists $cmd || fatal_exit "The command $cmd is not available." 4
-# done
+for cmd in cat mktemp mv; do
+	cmd_exists $cmd || fatal_exit "The command $cmd is not available." 4
+done
 
 downloader=
 for cmd in curl wget; do
@@ -153,11 +153,11 @@ or a URL including protocol." 5
 	else
 		download "$1" || fatal_exit "Failed to download $2 file: $1" 6
 	fi
+	say "" # make sure there's a trailing newline
 }
 
 section=0
-block_lines=
-allow_lines=
+tmpdir=$(mktemp -d) || fatal_exit "Couldn't create temp working directory." 3
 while IFS='' read -r line || [ -n "$line" ]; do
 	debug "Read line: '$line'"
 	line=$(trim_string_front "$line")
@@ -175,17 +175,17 @@ while IFS='' read -r line || [ -n "$line" ]; do
 				section=2
 				continue
 			fi
-			block_lines="$block_lines$(process_line "$line" "blocklist")"
+			process_line "$line" "blocklist" >> "$tmpdir/block.txt"
 			;;
 		2)
-			allow_lines="$allow_lines$(process_line "$line" "allowlist")"
+			process_line "$line" "allowlist" >> "$tmpdir/allow.txt"
 			;;
 	esac
 done < "$1"
 
-debug "Writing lists to disk."
-say "$block_lines" > "$2".new || fatal_exit "Failed to write blocklist: $2.new" 3
-say "$allow_lines" > "$3".new || fatal_exit "Failed to write allowlist: $3.new" 3
-for f in "$2" "$3"; do [ -e "$f" ] && rm "$f"; done
-mv "$2".new "$2"
-mv "$3".new "$3"
+debug "Moving files into place."
+# -f: Overwrite existing file without prompting
+mv -f "$tmpdir/block.txt" "$2" || fatal_exit "Failed to write blocklist: $2" 3
+mv -f "$tmpdir/allow.txt" "$3" || fatal_exit "Failed to write allowlist: $3" 3
+
+cmd_exists rm && rm -r "$tmpdir" # There's no -d in busybox rm
