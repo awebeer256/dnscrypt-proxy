@@ -101,8 +101,24 @@ debug() {
 	message "DEBUG: $1"
 }
 
+USAGE_MSG="Usage: $THIS_NAME <config_file> <output_block_file> <output_allow_file>"
+readonly USAGE_MSG
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  say "$USAGE_MSG"
+	say "\
+An alternative to generate-domains-blocklist.py, for systems where Python is not available (e.g. \
+OpenWrt). It currently does not perform any deduplication and does not support time-based \
+restrictions. It takes two lists of local or remote files and concatenates them together into one\
+big blocklist and one big allowlist. Note that the latter is meant to be used with the \
+dnscrypt-proxy.toml option [allowed_names] -> allowed_names_file. This is different than the \
+Python script: that only outputs a blocklist, from which the domains in the input 'allowlist' have \
+been removed."
+	exit 0
+fi
+
 if [ -z "$3" ]; then
-	message "Usage: $THIS_NAME <config_file> <output_block_file> <output_allow_file>" >&2
+	message "$USAGE_MSG" >&2
 	exit 2
 fi
 debug "Called with: '$1', '$2', '$3'"
@@ -155,6 +171,8 @@ or a URL including protocol." 5
 	fi
 	say "" # make sure there's a trailing newline
 }
+
+message "Warning: this script does not perform any deduplication!"
 
 section=0
 tmpdir=$(mktemp -d) || fatal_exit "Couldn't create temp working directory." 3
